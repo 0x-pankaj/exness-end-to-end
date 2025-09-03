@@ -1,0 +1,16 @@
+{
+  "name": "pub-sub",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "redis": "^5.8.2",
+    "ws": "^8.18.3"
+  }
+}
