@@ -1,26 +1,47 @@
-use tungstenite::{Message, connect};
+// src/main.rs
+use crate::balance_manager::BalanceManager;
+use crate::processor::Processor;
+use crate::redis_manager::RedisManager;
+use anyhow::Result;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tokio::time::{Duration, interval};
+use tracing::{error, info};
 
-// currentPrice =   [
-//     {"symbol":"BTC_USDC_PERP","buyPrice":1125166260,"sellPrice":1102886730,"decimals":4},
-//     {"symbol":"BTC_USDC","buyPrice":1125731860,"sellPrice":1103441130,"decimals":4},
-//     {"symbol":"SOL_USDC_PERP","buyPrice":2119586,"sellPrice":2077713,"decimals":4},
-//     {"symbol":"SOL_USDC","buyPrice":2120293,"sellPrice":2078406,"decimals":4}
-// ]
+mod balance_manager;
+mod processor;
+mod redis_manager;
 
-fn main() {
-    let (mut socket, response) = connect("ws://localhost:8080").expect("Can't connect");
+#[tokio::main]
+async fn main() -> Result<()> {
+    // tracing_subscriber::init();
 
-    // println!("Response HTTP code: {}", response.status());
-    // println!("Response contains the following headers:");
+    info!("Starting Trading Engine");
 
-    // socket.send(Message::Text("WebSocket".into())).unwrap();
-    loop {
-        let msg = socket.read().expect("Error reading message");
-        println!("currentPrice: {msg}");
-    }
-    // socket.close(None);
+    let redis_manager = Arc::new(RwLock::new(RedisManager::new().await?));
+    let balance_manager = Arc::new(BalanceManager::new());
+    let processor = Arc::new(Processor::new(
+        redis_manager.clone(),
+        balance_manager.clone(),
+    ));
+
+    // Load snapshot if exists
+    processor.load_snapshot().await?;
+
+    // Start snapshot saving task
+    let processor_snapshot = processor.clone();
+    tokio::spawn(async move {
+        let mut interval = interval(Duration::from_secs(5));
+        loop {
+            interval.tick().await;
+            if let Err(e) = processor_snapshot.save_snapshot().await {
+                error!("Failed to save snapshot: {}", e);
+            }
+        }
+    });
+
+    // Start processing orders
+    processor.start_processing().await?;
+
+    Ok(())
 }
-
-//TODO
-// listening to the webocket for latest price list
-// get price destructure it to the struct of price

@@ -1,0 +1,37 @@
+{
+  "last_processed_id": "1757150287221-0",
+  "orders": {},
+  "prices": {
+    "BTC_USDC": {
+      "buy_price": "1118704280",
+      "decimals": 4,
+      "sell_price": "1096552710",
+      "symbol": "BTC_USDC"
+    },
+    "BTC_USDC_PERP": {
+      "buy_price": "1118290180",
+      "decimals": 4,
+      "sell_price": "1096146810",
+      "symbol": "BTC_USDC_PERP"
+    },
+    "SOL_USDC": {
+      "buy_price": "2050906",
+      "decimals": 4,
+      "sell_price": "2010393",
+      "symbol": "SOL_USDC"
+    },
+    "SOL_USDC_PERP": {
+      "buy_price": "2050199",
+      "decimals": 4,
+      "sell_price": "2009700",
+      "symbol": "SOL_USDC_PERP"
+    }
+  },
+  "timestamp": 1757150287,
+  "users": {
+    "test-user": {
+      "asset_balances": {},
+      "usd_balance": "100000"
+    }
+  }
+}
