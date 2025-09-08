@@ -1,6 +1,5 @@
-// src/processor.rs
 use anyhow::Result;
-use redis::AsyncCommands;
+use redis::Value as RedisValue;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
 use std::collections::HashMap;
@@ -10,24 +9,24 @@ use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-use crate::balance_manager::{AssetPrice, BalanceManager, Order, UserBalance};
+use crate::balance_manager::{AssetPrice, BalanceManager, Order};
 use crate::redis_manager::RedisManager;
 
 pub struct Processor {
     redis_manager: Arc<RwLock<RedisManager>>,
-    balance_manager: Arc<BalanceManager>,
+    balance_manager: Arc<RwLock<BalanceManager>>,
     last_processed_id: Arc<RwLock<String>>,
 }
 
 impl Processor {
     pub fn new(
         redis_manager: Arc<RwLock<RedisManager>>,
-        balance_manager: Arc<BalanceManager>,
+        balance_manager: Arc<RwLock<BalanceManager>>,
     ) -> Self {
         Self {
             redis_manager,
             balance_manager,
-            last_processed_id: Arc::new(RwLock::new("0".to_string())),
+            last_processed_id: Arc::new(RwLock::new("$".to_string())),
         }
     }
 
@@ -39,23 +38,32 @@ impl Processor {
 
                 // Restore users
                 if let Some(users_data) = snapshot.get("users") {
-                    if let Ok(users_map) =
-                        serde_json::from_value::<HashMap<String, UserBalance>>(users_data.clone())
+                    if let Ok(users_map) = serde_json::from_value::<
+                        HashMap<String, crate::balance_manager::UserBalance>,
+                    >(users_data.clone())
                     {
-                        let mut users = self.balance_manager.users.write().await;
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut users = balance_manager.users.write().await;
                         *users = users_map;
                         info!("Restored {} users from snapshot", users.len());
                     }
                 }
 
-                // Restore orders
+                // Restore orders - Updated to handle new structure HashMap<String, Vec<Order>>
                 if let Some(orders_data) = snapshot.get("orders") {
                     if let Ok(orders_map) =
-                        serde_json::from_value::<HashMap<String, Order>>(orders_data.clone())
+                        serde_json::from_value::<HashMap<String, Vec<Order>>>(orders_data.clone())
                     {
-                        let mut orders = self.balance_manager.open_orders.write().await;
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut orders = balance_manager.open_orders.write().await;
                         *orders = orders_map;
-                        info!("Restored {} open orders from snapshot", orders.len());
+
+                        let total_orders: usize = orders.values().map(|v| v.len()).sum();
+                        info!(
+                            "Restored {} open orders for {} users from snapshot",
+                            total_orders,
+                            orders.len()
+                        );
                     }
                 }
 
@@ -64,7 +72,8 @@ impl Processor {
                     if let Ok(prices_map) =
                         serde_json::from_value::<HashMap<String, AssetPrice>>(prices_data.clone())
                     {
-                        let mut prices = self.balance_manager.asset_prices.write().await;
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut prices = balance_manager.asset_prices.write().await;
                         *prices = prices_map;
                         info!("Restored {} asset prices from snapshot", prices.len());
                     }
@@ -88,10 +97,21 @@ impl Processor {
     }
 
     pub async fn save_snapshot(&self) -> Result<()> {
-        let users = self.balance_manager.users.read().await;
-        let orders = self.balance_manager.open_orders.read().await;
-        let prices = self.balance_manager.asset_prices.read().await;
+        let balance_manager = self.balance_manager.read().await;
+        let users = balance_manager.users.read().await;
+        let orders = balance_manager.open_orders.read().await;
+        let prices = balance_manager.asset_prices.read().await;
         let last_processed_id = self.last_processed_id.read().await;
+
+        // Log snapshot stats
+        let total_orders: usize = orders.values().map(|v| v.len()).sum();
+        info!(
+            "Saving snapshot: {} users, {} orders across {} users, {} prices",
+            users.len(),
+            total_orders,
+            orders.len(),
+            prices.len()
+        );
 
         let snapshot = json!({
             "users": *users,
@@ -102,46 +122,21 @@ impl Processor {
         });
 
         fs::write("snapshot.json", serde_json::to_string_pretty(&snapshot)?).await?;
-        info!("Snapshot saved");
+        info!("Snapshot saved successfully");
         Ok(())
     }
 
     pub async fn start_processing(&self) -> Result<()> {
-        // Create consumer group
-        {
-            let mut redis_manager = self.redis_manager.write().await;
-            redis_manager
-                .create_consumer_group("orders", "engine-group", "engine-consumer")
-                .await?;
-        }
-
-        // Start liquidation checker
-        let balance_manager_liquidation = self.balance_manager.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-            loop {
-                interval.tick().await;
-                let liquidated_orders = balance_manager_liquidation.check_liquidations().await;
-
-                for order_id in liquidated_orders {
-                    info!("Liquidating order: {}", order_id);
-                    if let Err(e) = balance_manager_liquidation.liquidate_order(&order_id).await {
-                        error!("Failed to liquidate order {}: {}", order_id, e);
-                    }
-                }
-            }
-        });
-
         info!("Starting order processing loop");
 
         loop {
+            let last_id = self.last_processed_id.read().await.clone();
+
             let result = {
                 let mut redis_manager = self.redis_manager.write().await;
-                redis_manager
-                    .read_stream("orders", "engine-group", "engine-consumer", 10)
-                    .await
+                redis_manager.read_stream("orders", &last_id).await
             };
-
+            // println!("result: {:?}", result);
             match result {
                 Ok(reply) => {
                     for stream_key in reply.keys {
@@ -157,17 +152,6 @@ impl Processor {
                                 let mut last_processed_id = self.last_processed_id.write().await;
                                 *last_processed_id = id.clone();
                             }
-
-                            // Acknowledge the message
-                            {
-                                let mut redis_manager = self.redis_manager.write().await;
-                                if let Err(e) = redis_manager
-                                    .acknowledge("orders", "engine-group", &[id])
-                                    .await
-                                {
-                                    error!("Failed to acknowledge message: {}", e);
-                                }
-                            }
                         }
                     }
                 }
@@ -179,22 +163,29 @@ impl Processor {
         }
     }
 
-    async fn process_message(&self, data: HashMap<String, redis::Value>) -> Result<()> {
-        let action = data
-            .get("action")
+    async fn process_message(&self, data: HashMap<String, RedisValue>) -> Result<()> {
+        let data_str = data
+            .get("data")
             .and_then(|v| match v {
-                redis::Value::Data(bytes) => std::str::from_utf8(bytes).ok(),
+                RedisValue::Data(bytes) => std::str::from_utf8(bytes).ok(),
                 _ => None,
             })
+            .ok_or_else(|| anyhow::anyhow!("Missing data field"))?;
+
+        let message: Value = serde_json::from_str(data_str)
+            .map_err(|e| anyhow::anyhow!("Failed to parse message: {}", e))?;
+
+        let action = message
+            .get("action")
+            .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow::anyhow!("Missing action"))?;
 
         match action {
             "LATEST_PRICE" => {
-                println!("latest price update hitted");
-                let symbol = self.get_string_field(&data, "symbol")?;
-                let buy_price = self.get_decimal_field(&data, "buyPrice")?;
-                let sell_price = self.get_decimal_field(&data, "sellPrice")?;
-                let decimals = self.get_u32_field(&data, "decimals")?;
+                let symbol = self.get_string_field(&message, "symbol")?;
+                let buy_price = self.get_decimal_field(&message, "buyPrice")?;
+                let sell_price = self.get_decimal_field(&message, "sellPrice")?;
+                let decimals = self.get_u32_field(&message, "decimals")?;
 
                 let asset_price = AssetPrice {
                     symbol: symbol.clone(),
@@ -202,32 +193,31 @@ impl Processor {
                     sell_price,
                     decimals,
                 };
-                println!("asset_latest_price : {:?}", asset_price);
 
-                self.balance_manager.update_price(asset_price).await;
-                info!(
-                    "Updated price for {}: buy={}, sell={}",
-                    symbol, buy_price, sell_price
-                );
+                let balance_manager = self.balance_manager.read().await;
+                balance_manager.update_price(asset_price).await;
+                // info!(
+                //     "Updated price for {}: buy={}, sell={}",
+                //     symbol, buy_price, sell_price
+                // );
             }
             "CREATE_ORDER" => {
-                println!("create order hitted");
-                self.handle_create_order(&data).await?;
+                self.handle_create_order(&message).await?;
             }
             "CLOSE_ORDER" => {
-                self.handle_close_order(&data).await?;
+                self.handle_close_order(&message).await?;
             }
             "GET_BALANCE_USD" => {
-                self.handle_get_balance_usd(&data).await?;
+                self.handle_get_balance_usd(&message).await?;
             }
             "GET_BALANCE" => {
-                self.handle_get_balance(&data).await?;
+                self.handle_get_balance(&message).await?;
             }
             "GET_SUPPORTED_ASSETS" => {
-                self.handle_get_supported_assets(&data).await?;
+                self.handle_get_supported_assets(&message).await?;
             }
             "GET_ORDERS" => {
-                self.handle_get_orders(&data).await?;
+                self.handle_get_orders(&message).await?;
             }
             _ => {
                 warn!("Unknown action: {}", action);
@@ -237,13 +227,32 @@ impl Processor {
         Ok(())
     }
 
-    async fn handle_create_order(&self, data: &HashMap<String, redis::Value>) -> Result<()> {
+    async fn handle_create_order(&self, data: &Value) -> Result<()> {
         let order_id = self.get_string_field(data, "orderId")?;
         let user_id = self.get_string_field(data, "user")?;
         let asset = self.get_string_field(data, "asset")?;
         let order_type = self.get_string_field(data, "type")?;
         let margin = self.get_decimal_field(data, "margin")?;
         let leverage = self.get_u32_field(data, "leverage")?;
+        let timestamp = self.get_i64_field(data, "timestamp")?;
+
+        // Validate timestamp (within 5 seconds)
+        let current_time = chrono::Utc::now().timestamp();
+        if (current_time - timestamp).abs() > 5 {
+            let response = json!({
+                "action": "ORDER_FAILED",
+                "data": {
+                    "orderId": order_id,
+                    "message": "Order rejected: timestamp too old"
+                }
+            });
+
+            let mut redis_manager = self.redis_manager.write().await;
+            redis_manager
+                .add_to_stream("callback_response", &response.to_string())
+                .await?;
+            return Ok(());
+        }
 
         let order = Order {
             order_id: order_id.clone(),
@@ -252,12 +261,17 @@ impl Processor {
             order_type,
             margin,
             leverage,
-            open_price: Decimal::from(0), // Will be set in create_order
-            quantity: Decimal::from(0),   // Will be calculated
-            timestamp: chrono::Utc::now().timestamp(),
+            open_price: Decimal::from(0),
+            quantity: Decimal::from(0),
+            timestamp,
         };
 
-        match self.balance_manager.create_order(order).await {
+        let result = {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.create_order(order).await
+        };
+
+        match result {
             Ok(()) => {
                 let response = json!({
                     "action": "ORDER_SUCCESS",
@@ -269,7 +283,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(&format!("response:{}", order_id), &response.to_string())
+                    .add_to_stream("callback_response", &response.to_string())
                     .await?;
             }
             Err(e) => {
@@ -283,7 +297,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(&format!("response:{}", order_id), &response.to_string())
+                    .add_to_stream("callback_response", &response.to_string())
                     .await?;
             }
         }
@@ -291,33 +305,48 @@ impl Processor {
         Ok(())
     }
 
-    async fn handle_close_order(&self, data: &HashMap<String, redis::Value>) -> Result<()> {
+    async fn handle_close_order(&self, data: &Value) -> Result<()> {
         let order_id = self.get_string_field(data, "orderId")?;
-        let request_id = self.get_string_field(data, "requestId")?;
+        println!("Processing close order for: {}", order_id);
 
-        match self.balance_manager.close_order(&order_id).await {
+        let result = {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.close_order(&order_id).await
+        };
+
+        println!("Close order result: {:?}", result);
+
+        match result {
             Ok((pnl, message)) => {
+                println!("Order closed successfully, preparing response...");
+
                 let response = json!({
                     "action": "ORDER_SUCCESS",
                     "data": {
                         "orderId": order_id,
-                        "pnl": pnl,
+                        "pnl": pnl.to_string(), // Convert Decimal to String
                         "message": message
                     }
                 });
 
-                // Send response to backend
-                {
-                    let mut redis_manager = self.redis_manager.write().await;
-                    redis_manager
-                        .publish_response(
-                            &format!("response:{}", request_id),
-                            &response.to_string(),
-                        )
-                        .await?;
+                println!("Response JSON: {}", response);
+
+                let mut redis_manager = self.redis_manager.write().await;
+                println!("Got redis manager lock, adding to callback_response stream...");
+
+                let stream_result = redis_manager
+                    .add_to_stream("callback_response", &response.to_string())
+                    .await;
+
+                println!("Stream add result: {:?}", stream_result);
+
+                if let Err(e) = stream_result {
+                    error!("Failed to add response to callback_response stream: {}", e);
+                    return Err(e);
                 }
 
-                // Publish to database processor using LPUSH
+                // Publish to database processor using stream
+                println!("Adding to db_queue stream...");
                 let db_data = json!({
                     "action": "SAVE_CLOSED_ORDER",
                     "orderId": order_id,
@@ -326,15 +355,19 @@ impl Processor {
                     "timestamp": chrono::Utc::now().timestamp()
                 });
 
-                {
-                    let mut redis_manager = self.redis_manager.write().await;
-                    let _: i32 = redis_manager
-                        .connection
-                        .lpush("db_queue", db_data.to_string())
-                        .await?;
+                let db_result = redis_manager
+                    .add_to_stream("db_queue", &db_data.to_string())
+                    .await;
+
+                println!("DB queue add result: {:?}", db_result);
+
+                if let Err(e) = db_result {
+                    error!("Failed to add to db_queue stream: {}", e);
                 }
             }
             Err(e) => {
+                println!("Order close failed: {}", e);
+
                 let response = json!({
                     "action": "ORDER_FAILED",
                     "data": {
@@ -344,20 +377,38 @@ impl Processor {
                 });
 
                 let mut redis_manager = self.redis_manager.write().await;
-                redis_manager
-                    .publish_response(&format!("response:{}", request_id), &response.to_string())
-                    .await?;
+                let stream_result = redis_manager
+                    .add_to_stream("callback_response", &response.to_string())
+                    .await;
+
+                println!("Error response stream result: {:?}", stream_result);
+
+                if let Err(stream_err) = stream_result {
+                    error!("Failed to add error response to stream: {}", stream_err);
+                    return Err(stream_err);
+                }
             }
         }
 
+        println!("handle_close_order completed");
         Ok(())
     }
 
-    async fn handle_get_balance_usd(&self, data: &HashMap<String, redis::Value>) -> Result<()> {
-        let request_id = self.get_string_field(data, "requestId")?;
+    async fn handle_get_balance_usd(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
 
-        match self.balance_manager.get_user_balance_usd(&user_id).await {
+        // Ensure user exists
+        {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_or_create_user(&user_id).await;
+        }
+
+        let result = {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_user_balance_usd(&user_id).await
+        };
+
+        match result {
             Ok(balance) => {
                 let response = json!({
                     "action": "BALANCE_USD",
@@ -368,7 +419,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(&format!("response:{}", request_id), &response.to_string())
+                    .add_to_stream("callback_response", &response.to_string())
                     .await?;
             }
             Err(e) => {
@@ -381,7 +432,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(&format!("response:{}", request_id), &response.to_string())
+                    .add_to_stream("callback_response", &response.to_string())
                     .await?;
             }
         }
@@ -389,17 +440,26 @@ impl Processor {
         Ok(())
     }
 
-    async fn handle_get_balance(&self, data: &HashMap<String, redis::Value>) -> Result<()> {
-        let request_id = self.get_string_field(data, "requestId")?;
+    async fn handle_get_balance(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
 
-        match self.balance_manager.get_user_balance(&user_id).await {
+        // Ensure user exists
+        {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_or_create_user(&user_id).await;
+        }
+
+        let result = {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_user_balance(&user_id).await
+        };
+
+        match result {
             Ok(balances) => {
                 let mut response_data = json!({
                     "action": "BALANCE"
                 });
 
-                // Add each asset balance
                 for (asset, (balance, decimals)) in balances {
                     response_data[&asset] = json!({
                         "balance": balance,
@@ -409,10 +469,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(
-                        &format!("response:{}", request_id),
-                        &response_data.to_string(),
-                    )
+                    .add_to_stream("callback_response", &response_data.to_string())
                     .await?;
             }
             Err(e) => {
@@ -425,7 +482,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .publish_response(&format!("response:{}", request_id), &response.to_string())
+                    .add_to_stream("callback_response", &response.to_string())
                     .await?;
             }
         }
@@ -433,13 +490,7 @@ impl Processor {
         Ok(())
     }
 
-    async fn handle_get_supported_assets(
-        &self,
-        data: &HashMap<String, redis::Value>,
-    ) -> Result<()> {
-        let request_id = self.get_string_field(data, "requestId")?;
-
-        // Mock supported assets - you can expand this
+    async fn handle_get_supported_assets(&self, data: &Value) -> Result<()> {
         let supported_assets = json!([
             {
                 "symbol": "BTC",
@@ -465,17 +516,25 @@ impl Processor {
 
         let mut redis_manager = self.redis_manager.write().await;
         redis_manager
-            .publish_response(&format!("response:{}", request_id), &response.to_string())
+            .add_to_stream("callback_response", &response.to_string())
             .await?;
 
         Ok(())
     }
 
-    async fn handle_get_orders(&self, data: &HashMap<String, redis::Value>) -> Result<()> {
-        let request_id = self.get_string_field(data, "requestId")?;
+    async fn handle_get_orders(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
 
-        let orders = self.balance_manager.get_user_orders(&user_id).await;
+        // Ensure user exists
+        {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_or_create_user(&user_id).await;
+        }
+
+        let orders = {
+            let balance_manager = self.balance_manager.read().await;
+            balance_manager.get_user_orders(&user_id).await
+        };
 
         let response = json!({
             "action": "ORDERS",
@@ -484,39 +543,35 @@ impl Processor {
 
         let mut redis_manager = self.redis_manager.write().await;
         redis_manager
-            .publish_response(&format!("response:{}", request_id), &response.to_string())
+            .add_to_stream("callback_response", &response.to_string())
             .await?;
 
         Ok(())
     }
 
-    fn get_string_field(
-        &self,
-        data: &HashMap<String, redis::Value>,
-        field: &str,
-    ) -> Result<String> {
+    fn get_string_field(&self, data: &Value, field: &str) -> Result<String> {
         data.get(field)
-            .and_then(|v| match v {
-                redis::Value::Data(bytes) => std::str::from_utf8(bytes).ok().map(|s| s.to_string()),
-                _ => None,
-            })
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
             .ok_or_else(|| anyhow::anyhow!("Missing or invalid field: {}", field))
     }
 
-    fn get_decimal_field(
-        &self,
-        data: &HashMap<String, redis::Value>,
-        field: &str,
-    ) -> Result<Decimal> {
+    fn get_decimal_field(&self, data: &Value, field: &str) -> Result<Decimal> {
         let str_val = self.get_string_field(data, field)?;
         Decimal::from_str(&str_val)
             .map_err(|e| anyhow::anyhow!("Invalid decimal for field {}: {}", field, e))
     }
 
-    fn get_u32_field(&self, data: &HashMap<String, redis::Value>, field: &str) -> Result<u32> {
+    fn get_u32_field(&self, data: &Value, field: &str) -> Result<u32> {
         let str_val = self.get_string_field(data, field)?;
         str_val
             .parse::<u32>()
             .map_err(|e| anyhow::anyhow!("Invalid u32 for field {}: {}", field, e))
+    }
+
+    fn get_i64_field(&self, data: &Value, field: &str) -> Result<i64> {
+        data.get(field)
+            .and_then(|v| v.as_i64())
+            .ok_or_else(|| anyhow::anyhow!("Missing or invalid field: {}", field))
     }
 }

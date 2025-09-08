@@ -1,37 +1,67 @@
 {
-  "last_processed_id": "1757150287221-0",
-  "orders": {},
+  "last_processed_id": "1757281362748-0",
+  "orders": {
+    "test-user": [
+      {
+        "asset": "SOL",
+        "leverage": 20,
+        "margin": "500",
+        "open_price": "1995939",
+        "order_id": "01991ff7-c6eb-7000-9b05-e2bfa83fa53a",
+        "order_type": "buy",
+        "quantity": "0.0050101731565944650613069838",
+        "timestamp": 1757177956,
+        "user_id": "test-user"
+      },
+      {
+        "asset": "SOL",
+        "leverage": 20,
+        "margin": "500",
+        "open_price": "1995939",
+        "order_id": "01991ff7-ca9e-7000-9346-90b523a78d66",
+        "order_type": "buy",
+        "quantity": "0.0050101731565944650613069838",
+        "timestamp": 1757177957,
+        "user_id": "test-user"
+      },
+      {
+        "asset": "SOL",
+        "leverage": 20,
+        "margin": "500",
+        "open_price": "1995939",
+        "order_id": "01991ff7-ce10-7000-b79c-3c781fe893c7",
+        "order_type": "buy",
+        "quantity": "0.0050101731565944650613069838",
+        "timestamp": 1757177957,
+        "user_id": "test-user"
+      }
+    ]
+  },
   "prices": {
-    "BTC_USDC": {
-      "buy_price": "1118704280",
+    "BTC": {
+      "buy_price": "1122110000",
       "decimals": 4,
-      "sell_price": "1096552710",
-      "symbol": "BTC_USDC"
+      "sell_price": "1099890990",
+      "symbol": "BTC"
     },
-    "BTC_USDC_PERP": {
-      "buy_price": "1118290180",
+    "ETH": {
+      "buy_price": "43334656",
       "decimals": 4,
-      "sell_price": "1096146810",
-      "symbol": "BTC_USDC_PERP"
+      "sell_price": "42476643",
+      "symbol": "ETH"
     },
-    "SOL_USDC": {
-      "buy_price": "2050906",
+    "SOL": {
+      "buy_price": "2066157",
       "decimals": 4,
-      "sell_price": "2010393",
-      "symbol": "SOL_USDC"
-    },
-    "SOL_USDC_PERP": {
-      "buy_price": "2050199",
-      "decimals": 4,
-      "sell_price": "2009700",
-      "symbol": "SOL_USDC_PERP"
+      "sell_price": "2025342",
+      "symbol": "SOL"
     }
   },
-  "timestamp": 1757150287,
+  "timestamp": 1757282174,
   "users": {
     "test-user": {
       "asset_balances": {},
-      "usd_balance": "100000"
+      "usd_balance": "1411.7206483109168897211264023"
     }
   }
 }
