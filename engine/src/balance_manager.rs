@@ -1,6 +1,7 @@
+//balance_manager.rs
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,10 +31,21 @@ pub struct UserBalance {
     pub asset_balances: HashMap<String, (Decimal, u32)>, // For actual owned assets (not leveraged positions)
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LiquidationEntry {
+    pub order_id: String,
+    pub user_id: String,
+    pub liquidation_price: Decimal,
+}
+
 pub struct BalanceManager {
     pub users: RwLock<HashMap<String, UserBalance>>,
-    // Changed: Group orders by user_id -> Vec<Order> for faster liquidation checks
-    pub open_orders: RwLock<HashMap<String, Vec<Order>>>, // { "userId": [orders], "user2": [orders] }
+    // Fast order lookup by order_id
+    pub orders_by_id: RwLock<HashMap<String, Order>>,
+    // User orders for listing user's orders
+    pub orders_by_user: RwLock<HashMap<String, Vec<String>>>, // user_id -> [order_ids]
+    // Liquidation tracking: asset -> BTreeMap<liquidation_price, Vec<LiquidationEntry>>
+    pub liquidation_map: RwLock<HashMap<String, BTreeMap<String, Vec<LiquidationEntry>>>>, // Using String keys for BTreeMap to handle Decimal sorting
     pub asset_prices: RwLock<HashMap<String, AssetPrice>>,
 }
 
@@ -41,7 +53,9 @@ impl BalanceManager {
     pub fn new() -> Self {
         Self {
             users: RwLock::new(HashMap::new()),
-            open_orders: RwLock::new(HashMap::new()),
+            orders_by_id: RwLock::new(HashMap::new()),
+            orders_by_user: RwLock::new(HashMap::new()),
+            liquidation_map: RwLock::new(HashMap::new()),
             asset_prices: RwLock::new(HashMap::new()),
         }
     }
@@ -69,7 +83,6 @@ impl BalanceManager {
 
     pub async fn create_order(&self, mut order: Order) -> Result<(), String> {
         let mut users = self.users.write().await;
-        let mut orders = self.open_orders.write().await;
 
         // Ensure user exists
         let user_balance = users
@@ -103,14 +116,47 @@ impl BalanceManager {
         order.open_price = current_price;
         order.quantity = (order.margin * Decimal::from(order.leverage)) / current_price;
 
+        // Calculate liquidation price
+        let liquidation_price = self.calculate_liquidation_price(&order);
+
         // Deduct margin from user balance
         user_balance.usd_balance -= required_margin;
 
-        // Store the order grouped by user
-        orders
-            .entry(order.user_id.clone())
-            .or_insert_with(Vec::new)
-            .push(order);
+        // Store the order in fast lookup map
+        {
+            let mut orders_by_id = self.orders_by_id.write().await;
+            orders_by_id.insert(order.order_id.clone(), order.clone());
+        }
+
+        // Add to user's order list
+        {
+            let mut orders_by_user = self.orders_by_user.write().await;
+            orders_by_user
+                .entry(order.user_id.clone())
+                .or_insert_with(Vec::new)
+                .push(order.order_id.clone());
+        }
+
+        // Add to liquidation map
+        {
+            let mut liquidation_map = self.liquidation_map.write().await;
+            let asset_liquidations = liquidation_map
+                .entry(order.asset.clone())
+                .or_insert_with(BTreeMap::new);
+
+            let liquidation_entry = LiquidationEntry {
+                order_id: order.order_id.clone(),
+                user_id: order.user_id.clone(),
+                liquidation_price,
+            };
+
+            // Use liquidation price as string key for BTreeMap
+            let price_key = liquidation_price.to_string();
+            asset_liquidations
+                .entry(price_key)
+                .or_insert_with(Vec::new)
+                .push(liquidation_entry);
+        }
 
         Ok(())
     }
@@ -119,43 +165,42 @@ impl BalanceManager {
         println!("Attempting to close order: {}", order_id);
 
         let mut users = self.users.write().await;
-        let mut orders = self.open_orders.write().await;
+        let mut orders_by_id = self.orders_by_id.write().await;
+        let mut orders_by_user = self.orders_by_user.write().await;
+        let mut liquidation_map = self.liquidation_map.write().await;
 
-        println!("Current orders state: {:?}", orders);
-
-        // Find and remove the order
-        let mut found_order: Option<Order> = None;
-        let mut user_to_cleanup: Option<String> = None;
-
-        for (user_id, user_orders) in orders.iter_mut() {
-            if let Some(pos) = user_orders.iter().position(|o| o.order_id == order_id) {
-                found_order = Some(user_orders.remove(pos));
-                println!(
-                    "Found order for user: {}, remaining orders: {}",
-                    user_id,
-                    user_orders.len()
-                );
-
-                // Mark for cleanup if this was the last order for this user
-                if user_orders.is_empty() {
-                    user_to_cleanup = Some(user_id.clone());
-                }
-                break;
-            }
-        }
-
-        let order = found_order.ok_or_else(|| {
-            println!("Order {} not found in any user's orders", order_id);
+        // Fast lookup by order_id
+        let order = orders_by_id.remove(order_id).ok_or_else(|| {
+            println!("Order {} not found", order_id);
             "Order not found".to_string()
         })?;
 
-        // Clean up empty user order vector if needed
-        if let Some(user_id) = user_to_cleanup {
-            orders.remove(&user_id);
-            println!("Cleaned up empty orders for user: {}", user_id);
+        println!("Order found: {:?}", order);
+
+        // Remove from user's order list
+        if let Some(user_orders) = orders_by_user.get_mut(&order.user_id) {
+            user_orders.retain(|id| id != order_id);
+            if user_orders.is_empty() {
+                orders_by_user.remove(&order.user_id);
+            }
         }
 
-        println!("Order found: {:?}", order);
+        // Remove from liquidation map
+        if let Some(asset_liquidations) = liquidation_map.get_mut(&order.asset) {
+            let liquidation_price = self.calculate_liquidation_price(&order);
+            let price_key = liquidation_price.to_string();
+
+            if let Some(entries) = asset_liquidations.get_mut(&price_key) {
+                entries.retain(|entry| entry.order_id != order_id);
+                if entries.is_empty() {
+                    asset_liquidations.remove(&price_key);
+                }
+            }
+
+            if asset_liquidations.is_empty() {
+                liquidation_map.remove(&order.asset);
+            }
+        }
 
         let user_balance = users.get_mut(&order.user_id).ok_or_else(|| {
             println!("User {} not found in users map", order.user_id);
@@ -195,28 +240,43 @@ impl BalanceManager {
 
         Ok((pnl, format!("Order closed at price {}", current_price)))
     }
+
     pub async fn check_liquidations(&self) -> Vec<(String, String)> {
-        let orders = self.open_orders.read().await;
+        let liquidation_map = self.liquidation_map.read().await;
         let prices = self.asset_prices.read().await;
         let mut liquidated_orders = Vec::new();
 
-        // Now we can iterate by user, making it more efficient
-        for (user_id, user_orders) in orders.iter() {
-            for order in user_orders {
-                if let Some(price_info) = prices.get(&order.asset) {
-                    let current_price =
-                        (price_info.buy_price + price_info.sell_price) / Decimal::from(2);
+        for (asset, asset_liquidations) in liquidation_map.iter() {
+            if let Some(price_info) = prices.get(asset) {
+                let current_price =
+                    (price_info.buy_price + price_info.sell_price) / Decimal::from(2);
 
-                    let price_change_percent = if order.order_type == "long" {
-                        (order.open_price - current_price) / order.open_price
-                    } else {
-                        (current_price - order.open_price) / order.open_price
-                    };
+                // For each asset, check liquidation prices in order
+                for (price_key, entries) in asset_liquidations.iter() {
+                    if let Ok(liquidation_price) = price_key.parse::<Decimal>() {
+                        // Check if current price has crossed liquidation threshold
+                        let should_liquidate = entries.iter().any(|entry| {
+                            if let Ok(order) = self.orders_by_id.try_read() {
+                                if let Some(order) = order.get(&entry.order_id) {
+                                    if order.order_type == "long" {
+                                        current_price <= liquidation_price
+                                    } else {
+                                        current_price >= liquidation_price
+                                    }
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        });
 
-                    let liquidation_threshold = Decimal::from(90) / Decimal::from(order.leverage); // * 100
-
-                    if price_change_percent > liquidation_threshold {
-                        liquidated_orders.push((order.order_id.clone(), user_id.clone()));
+                        if should_liquidate {
+                            for entry in entries {
+                                liquidated_orders
+                                    .push((entry.order_id.clone(), entry.user_id.clone()));
+                            }
+                        }
                     }
                 }
             }
@@ -226,29 +286,39 @@ impl BalanceManager {
     }
 
     pub async fn liquidate_order(&self, order_id: &str) -> Result<(), String> {
-        let mut orders = self.open_orders.write().await;
-        let mut user_to_cleanup: Option<String> = None;
+        let mut orders_by_id = self.orders_by_id.write().await;
+        let mut orders_by_user = self.orders_by_user.write().await;
+        let mut liquidation_map = self.liquidation_map.write().await;
 
-        // Find and remove the order
-        for (user_id, user_orders) in orders.iter_mut() {
-            if let Some(pos) = user_orders.iter().position(|o| o.order_id == order_id) {
-                user_orders.remove(pos);
+        // Fast removal by order_id
+        let order = orders_by_id.remove(order_id).ok_or("Order not found")?;
 
-                // Mark for cleanup if this was the last order for this user
-                if user_orders.is_empty() {
-                    user_to_cleanup = Some(user_id.clone());
-                }
-
-                // Clean up empty user order vector if needed
-                if let Some(user_id) = user_to_cleanup {
-                    orders.remove(&user_id);
-                }
-
-                return Ok(());
+        // Remove from user's order list
+        if let Some(user_orders) = orders_by_user.get_mut(&order.user_id) {
+            user_orders.retain(|id| id != order_id);
+            if user_orders.is_empty() {
+                orders_by_user.remove(&order.user_id);
             }
         }
 
-        Err("Order not found".to_string())
+        // Remove from liquidation map
+        if let Some(asset_liquidations) = liquidation_map.get_mut(&order.asset) {
+            let liquidation_price = self.calculate_liquidation_price(&order);
+            let price_key = liquidation_price.to_string();
+
+            if let Some(entries) = asset_liquidations.get_mut(&price_key) {
+                entries.retain(|entry| entry.order_id != order_id);
+                if entries.is_empty() {
+                    asset_liquidations.remove(&price_key);
+                }
+            }
+
+            if asset_liquidations.is_empty() {
+                liquidation_map.remove(&order.asset);
+            }
+        }
+
+        Ok(())
     }
 
     fn calculate_pnl(&self, order: &Order, current_price: Decimal) -> Decimal {
@@ -259,25 +329,39 @@ impl BalanceManager {
         }
     }
 
+    fn calculate_liquidation_price(&self, order: &Order) -> Decimal {
+        let liquidation_threshold = Decimal::from(90) / Decimal::from(order.leverage * 100);
+
+        if order.order_type == "long" {
+            // For long positions, liquidation happens when price drops
+            order.open_price * (Decimal::from(1) - liquidation_threshold)
+        } else {
+            // For short positions, liquidation happens when price rises
+            order.open_price * (Decimal::from(1) + liquidation_threshold)
+        }
+    }
+
     pub async fn get_user_balance_usd(&self, user_id: &str) -> Result<Decimal, String> {
         let users = self.users.read().await;
         let balance = users.get(user_id).ok_or("User not found")?;
         Ok(balance.usd_balance)
     }
 
-    // Updated to show positions separately from actual asset balances
     pub async fn get_user_positions(&self, user_id: &str) -> Result<Vec<(Order, Decimal)>, String> {
-        let orders = self.open_orders.read().await;
+        let orders_by_user = self.orders_by_user.read().await;
+        let orders_by_id = self.orders_by_id.read().await;
         let prices = self.asset_prices.read().await;
         let mut positions = Vec::new();
 
-        if let Some(user_orders) = orders.get(user_id) {
-            for order in user_orders {
-                if let Some(price_info) = prices.get(&order.asset) {
-                    let current_price =
-                        (price_info.buy_price + price_info.sell_price) / Decimal::from(2);
-                    let pnl = self.calculate_pnl(order, current_price);
-                    positions.push((order.clone(), pnl));
+        if let Some(user_order_ids) = orders_by_user.get(user_id) {
+            for order_id in user_order_ids {
+                if let Some(order) = orders_by_id.get(order_id) {
+                    if let Some(price_info) = prices.get(&order.asset) {
+                        let current_price =
+                            (price_info.buy_price + price_info.sell_price) / Decimal::from(2);
+                        let pnl = self.calculate_pnl(order, current_price);
+                        positions.push((order.clone(), pnl));
+                    }
                 }
             }
         }
@@ -291,7 +375,6 @@ impl BalanceManager {
     ) -> Result<HashMap<String, (Decimal, u32)>, String> {
         let users = self.users.read().await;
 
-        // Return only actual owned assets, not leveraged positions
         if let Some(user_balance) = users.get(user_id) {
             Ok(user_balance.asset_balances.clone())
         } else {
@@ -300,10 +383,18 @@ impl BalanceManager {
     }
 
     pub async fn get_user_orders(&self, user_id: &str) -> Vec<Order> {
-        let orders = self.open_orders.read().await;
-        orders
-            .get(user_id)
-            .map(|user_orders| user_orders.clone())
-            .unwrap_or_else(Vec::new)
+        let orders_by_user = self.orders_by_user.read().await;
+        let orders_by_id = self.orders_by_id.read().await;
+        let mut user_orders = Vec::new();
+
+        if let Some(user_order_ids) = orders_by_user.get(user_id) {
+            for order_id in user_order_ids {
+                if let Some(order) = orders_by_id.get(order_id) {
+                    user_orders.push(order.clone());
+                }
+            }
+        }
+
+        user_orders
     }
 }

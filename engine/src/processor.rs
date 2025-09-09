@@ -1,15 +1,16 @@
+//processor.rs
 use anyhow::Result;
 use redis::Value as RedisValue;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
-use crate::balance_manager::{AssetPrice, BalanceManager, Order};
+use crate::balance_manager::{AssetPrice, BalanceManager, LiquidationEntry, Order};
 use crate::redis_manager::RedisManager;
 
 pub struct Processor {
@@ -49,20 +50,88 @@ impl Processor {
                     }
                 }
 
-                // Restore orders - Updated to handle new structure HashMap<String, Vec<Order>>
-                if let Some(orders_data) = snapshot.get("orders") {
+                // Restore orders in new optimized format
+                if let Some(orders_data) = snapshot.get("orders_by_id") {
                     if let Ok(orders_map) =
-                        serde_json::from_value::<HashMap<String, Vec<Order>>>(orders_data.clone())
+                        serde_json::from_value::<HashMap<String, Order>>(orders_data.clone())
                     {
                         let balance_manager = self.balance_manager.write().await;
-                        let mut orders = balance_manager.open_orders.write().await;
-                        *orders = orders_map;
+                        let mut orders_by_id = balance_manager.orders_by_id.write().await;
+                        *orders_by_id = orders_map;
+                        info!("Restored {} orders by ID from snapshot", orders_by_id.len());
+                    }
+                }
 
-                        let total_orders: usize = orders.values().map(|v| v.len()).sum();
+                if let Some(user_orders_data) = snapshot.get("orders_by_user") {
+                    if let Ok(user_orders_map) = serde_json::from_value::<
+                        HashMap<String, Vec<String>>,
+                    >(user_orders_data.clone())
+                    {
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut orders_by_user = balance_manager.orders_by_user.write().await;
+                        *orders_by_user = user_orders_map;
+                        info!("Restored user order mappings from snapshot");
+                    }
+                }
+
+                // Restore liquidation map
+                if let Some(liquidation_data) = snapshot.get("liquidation_map") {
+                    if let Ok(liquidation_map) = serde_json::from_value::<
+                        HashMap<String, BTreeMap<String, Vec<LiquidationEntry>>>,
+                    >(liquidation_data.clone())
+                    {
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut liquidation_map_lock =
+                            balance_manager.liquidation_map.write().await;
+                        *liquidation_map_lock = liquidation_map;
+                        info!("Restored liquidation map from snapshot");
+                    }
+                }
+
+                // Support old format for backward compatibility
+                if let Some(old_orders_data) = snapshot.get("orders") {
+                    if let Ok(old_orders_map) = serde_json::from_value::<HashMap<String, Vec<Order>>>(
+                        old_orders_data.clone(),
+                    ) {
+                        info!("Found old format orders, converting to new format...");
+
+                        let balance_manager = self.balance_manager.write().await;
+                        let mut orders_by_id = balance_manager.orders_by_id.write().await;
+                        let mut orders_by_user = balance_manager.orders_by_user.write().await;
+                        let mut liquidation_map = balance_manager.liquidation_map.write().await;
+
+                        for (_user_id, user_orders) in old_orders_map {
+                            for order in user_orders {
+                                // Add to orders_by_id
+                                orders_by_id.insert(order.order_id.clone(), order.clone());
+
+                                // Add to orders_by_user
+                                orders_by_user
+                                    .entry(order.user_id.clone())
+                                    .or_insert_with(Vec::new)
+                                    .push(order.order_id.clone());
+
+                                // Add to liquidation_map
+                                let liquidation_price = self.calculate_liquidation_price(&order);
+                                let liquidation_entry = LiquidationEntry {
+                                    order_id: order.order_id.clone(),
+                                    user_id: order.user_id.clone(),
+                                    liquidation_price,
+                                };
+
+                                let price_key = liquidation_price.to_string();
+                                liquidation_map
+                                    .entry(order.asset.clone())
+                                    .or_insert_with(BTreeMap::new)
+                                    .entry(price_key)
+                                    .or_insert_with(Vec::new)
+                                    .push(liquidation_entry);
+                            }
+                        }
+
                         info!(
-                            "Restored {} open orders for {} users from snapshot",
-                            total_orders,
-                            orders.len()
+                            "Converted {} orders to new optimized format",
+                            orders_by_id.len()
                         );
                     }
                 }
@@ -99,23 +168,27 @@ impl Processor {
     pub async fn save_snapshot(&self) -> Result<()> {
         let balance_manager = self.balance_manager.read().await;
         let users = balance_manager.users.read().await;
-        let orders = balance_manager.open_orders.read().await;
+        let orders_by_id = balance_manager.orders_by_id.read().await;
+        let orders_by_user = balance_manager.orders_by_user.read().await;
+        let liquidation_map = balance_manager.liquidation_map.read().await;
         let prices = balance_manager.asset_prices.read().await;
         let last_processed_id = self.last_processed_id.read().await;
 
         // Log snapshot stats
-        let total_orders: usize = orders.values().map(|v| v.len()).sum();
+        let total_users_with_orders = orders_by_user.len();
         info!(
-            "Saving snapshot: {} users, {} orders across {} users, {} prices",
+            "Saving snapshot: {} users, {} orders, {} users with orders, {} prices",
             users.len(),
-            total_orders,
-            orders.len(),
+            orders_by_id.len(),
+            total_users_with_orders,
             prices.len()
         );
 
         let snapshot = json!({
             "users": *users,
-            "orders": *orders,
+            "orders_by_id": *orders_by_id,
+            "orders_by_user": *orders_by_user,
+            "liquidation_map": *liquidation_map,
             "prices": *prices,
             "last_processed_id": *last_processed_id,
             "timestamp": chrono::Utc::now().timestamp()
@@ -124,6 +197,16 @@ impl Processor {
         fs::write("snapshot.json", serde_json::to_string_pretty(&snapshot)?).await?;
         info!("Snapshot saved successfully");
         Ok(())
+    }
+
+    fn calculate_liquidation_price(&self, order: &Order) -> Decimal {
+        let liquidation_threshold = Decimal::from(90) / Decimal::from(order.leverage * 100);
+
+        if order.order_type == "long" {
+            order.open_price * (Decimal::from(1) - liquidation_threshold)
+        } else {
+            order.open_price * (Decimal::from(1) + liquidation_threshold)
+        }
     }
 
     pub async fn start_processing(&self) -> Result<()> {
@@ -136,7 +219,7 @@ impl Processor {
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager.read_stream("orders", &last_id).await
             };
-            // println!("result: {:?}", result);
+
             match result {
                 Ok(reply) => {
                     for stream_key in reply.keys {
@@ -196,10 +279,6 @@ impl Processor {
 
                 let balance_manager = self.balance_manager.read().await;
                 balance_manager.update_price(asset_price).await;
-                // info!(
-                //     "Updated price for {}: buy={}, sell={}",
-                //     symbol, buy_price, sell_price
-                // );
             }
             "CREATE_ORDER" => {
                 self.handle_create_order(&message).await?;

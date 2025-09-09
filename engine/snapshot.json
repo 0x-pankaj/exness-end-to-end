@@ -1,67 +1,131 @@
 {
-  "last_processed_id": "1757281362748-0",
-  "orders": {
+  "last_processed_id": "1757408243649-0",
+  "liquidation_map": {
+    "SOL": {
+      "1812350.06": [
+        {
+          "liquidation_price": "1812350.06",
+          "order_id": "01992dac-f240-7000-b696-b1bfe66b0b48",
+          "user_id": "test-user"
+        }
+      ],
+      "2553568.38": [
+        {
+          "liquidation_price": "2553568.38",
+          "order_id": "01992daa-6eae-7000-93c9-af79a4e609be",
+          "user_id": "test-user"
+        },
+        {
+          "liquidation_price": "2553568.38",
+          "order_id": "01992daa-8ac2-7000-89e8-3f59cd0254ee",
+          "user_id": "test-user"
+        },
+        {
+          "liquidation_price": "2553568.38",
+          "order_id": "01992daa-9315-7000-b3ac-ca6ca69da5ec",
+          "user_id": "test-user"
+        }
+      ],
+      "2554152.48": [
+        {
+          "liquidation_price": "2554152.48",
+          "order_id": "01992daa-62a0-7000-9610-74b7ff80da0c",
+          "user_id": "test-user"
+        }
+      ]
+    }
+  },
+  "orders_by_id": {
+    "01992daa-62a0-7000-9610-74b7ff80da0c": {
+      "asset": "SOL",
+      "leverage": 5,
+      "margin": "50",
+      "open_price": "2164536",
+      "order_id": "01992daa-62a0-7000-9610-74b7ff80da0c",
+      "order_type": "sell",
+      "quantity": "0.000115498194532223072288934",
+      "timestamp": 1757407765,
+      "user_id": "test-user"
+    },
+    "01992daa-6eae-7000-93c9-af79a4e609be": {
+      "asset": "SOL",
+      "leverage": 5,
+      "margin": "50",
+      "open_price": "2164041",
+      "order_id": "01992daa-6eae-7000-93c9-af79a4e609be",
+      "order_type": "sell",
+      "quantity": "0.0001155246134430909580733452",
+      "timestamp": 1757407768,
+      "user_id": "test-user"
+    },
+    "01992daa-8ac2-7000-89e8-3f59cd0254ee": {
+      "asset": "SOL",
+      "leverage": 5,
+      "margin": "50",
+      "open_price": "2164041",
+      "order_id": "01992daa-8ac2-7000-89e8-3f59cd0254ee",
+      "order_type": "sell",
+      "quantity": "0.0001155246134430909580733452",
+      "timestamp": 1757407775,
+      "user_id": "test-user"
+    },
+    "01992daa-9315-7000-b3ac-ca6ca69da5ec": {
+      "asset": "SOL",
+      "leverage": 5,
+      "margin": "50",
+      "open_price": "2164041",
+      "order_id": "01992daa-9315-7000-b3ac-ca6ca69da5ec",
+      "order_type": "sell",
+      "quantity": "0.0001155246134430909580733452",
+      "timestamp": 1757407777,
+      "user_id": "test-user"
+    },
+    "01992dac-f240-7000-b696-b1bfe66b0b48": {
+      "asset": "SOL",
+      "leverage": 5,
+      "margin": "50",
+      "open_price": "2210183",
+      "order_id": "01992dac-f240-7000-b696-b1bfe66b0b48",
+      "order_type": "long",
+      "quantity": "0.0001131128055912112254958074",
+      "timestamp": 1757407932,
+      "user_id": "test-user"
+    }
+  },
+  "orders_by_user": {
     "test-user": [
-      {
-        "asset": "SOL",
-        "leverage": 20,
-        "margin": "500",
-        "open_price": "1995939",
-        "order_id": "01991ff7-c6eb-7000-9b05-e2bfa83fa53a",
-        "order_type": "buy",
-        "quantity": "0.0050101731565944650613069838",
-        "timestamp": 1757177956,
-        "user_id": "test-user"
-      },
-      {
-        "asset": "SOL",
-        "leverage": 20,
-        "margin": "500",
-        "open_price": "1995939",
-        "order_id": "01991ff7-ca9e-7000-9346-90b523a78d66",
-        "order_type": "buy",
-        "quantity": "0.0050101731565944650613069838",
-        "timestamp": 1757177957,
-        "user_id": "test-user"
-      },
-      {
-        "asset": "SOL",
-        "leverage": 20,
-        "margin": "500",
-        "open_price": "1995939",
-        "order_id": "01991ff7-ce10-7000-b79c-3c781fe893c7",
-        "order_type": "buy",
-        "quantity": "0.0050101731565944650613069838",
-        "timestamp": 1757177957,
-        "user_id": "test-user"
-      }
+      "01992daa-62a0-7000-9610-74b7ff80da0c",
+      "01992daa-6eae-7000-93c9-af79a4e609be",
+      "01992daa-8ac2-7000-89e8-3f59cd0254ee",
+      "01992daa-9315-7000-b3ac-ca6ca69da5ec",
+      "01992dac-f240-7000-b696-b1bfe66b0b48"
     ]
   },
   "prices": {
     "BTC": {
-      "buy_price": "1122110000",
+      "buy_price": "1141185870",
       "decimals": 4,
-      "sell_price": "1099890990",
+      "sell_price": "1118589120",
       "symbol": "BTC"
     },
     "ETH": {
-      "buy_price": "43334656",
+      "buy_price": "44025092",
       "decimals": 4,
-      "sell_price": "42476643",
+      "sell_price": "43153704",
       "symbol": "ETH"
     },
     "SOL": {
-      "buy_price": "2066157",
+      "buy_price": "2211294",
       "decimals": 4,
-      "sell_price": "2025342",
+      "sell_price": "2167605",
       "symbol": "SOL"
     }
   },
-  "timestamp": 1757282174,
+  "timestamp": 1757408243,
   "users": {
     "test-user": {
       "asset_balances": {},
-      "usd_balance": "1411.7206483109168897211264023"
+      "usd_balance": "909.5984385174925142468717734"
     }
   }
 }
