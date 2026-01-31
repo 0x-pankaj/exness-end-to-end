@@ -1,5 +1,5 @@
 {
-  "last_processed_id": "1757408243649-0",
+  "last_processed_id": "1769885086044-13",
   "liquidation_map": {
     "SOL": {
       "1812350.06": [
@@ -33,66 +33,554 @@
           "user_id": "test-user"
         }
       ]
+    },
+    "SOL_USDC": {
+      "1427174.10": [
+        {
+          "liquidation_price": "1427174.10",
+          "order_id": "019c155e-6bce-7000-9ab5-83c82dcf3306",
+          "user_id": "diwaz"
+        }
+      ],
+      "1445548.50": [
+        {
+          "liquidation_price": "1445548.50",
+          "order_id": "019c155d-ebb9-7000-ba9f-31b3de5d0112",
+          "user_id": "diwaz"
+        }
+      ],
+      "1446266.25": [
+        {
+          "liquidation_price": "1446266.25",
+          "order_id": "019c155d-e919-7000-86ab-b2f2207a47e0",
+          "user_id": "diwaz"
+        }
+      ],
+      "1446409.80": [
+        {
+          "liquidation_price": "1446409.80",
+          "order_id": "019c155d-ee37-7000-beec-c62bf6d84186",
+          "user_id": "diwaz"
+        }
+      ],
+      "1446696.90": [
+        {
+          "liquidation_price": "1446696.90",
+          "order_id": "019c155d-e6de-7000-9253-f48dc908d104",
+          "user_id": "diwaz"
+        }
+      ],
+      "1447127.55": [
+        {
+          "liquidation_price": "1447127.55",
+          "order_id": "019c155d-e23e-7000-bdff-9e4cf769308e",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1447127.55",
+          "order_id": "019c155d-e4df-7000-a9a0-37f71b0694c7",
+          "user_id": "diwaz"
+        }
+      ],
+      "1447845.30": [
+        {
+          "liquidation_price": "1447845.30",
+          "order_id": "019c155d-f068-7000-a1a2-58009c066cac",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1447845.30",
+          "order_id": "019c155d-f303-7000-bf7f-31bd64fa085d",
+          "user_id": "diwaz"
+        }
+      ],
+      "1448419.50": [
+        {
+          "liquidation_price": "1448419.50",
+          "order_id": "019c155d-dee3-7000-a01f-d9877f8da25f",
+          "user_id": "diwaz"
+        }
+      ],
+      "1448563.05": [
+        {
+          "liquidation_price": "1448563.05",
+          "order_id": "019c155d-f51c-7000-bb21-7308860d0949",
+          "user_id": "diwaz"
+        }
+      ],
+      "1448850.15": [
+        {
+          "liquidation_price": "1448850.15",
+          "order_id": "019c155d-f8b8-7000-a40c-b10675216ee6",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1448850.15",
+          "order_id": "019c155e-029a-7000-9edb-ad81ae74e354",
+          "user_id": "diwaz"
+        }
+      ],
+      "1449280.80": [
+        {
+          "liquidation_price": "1449280.80",
+          "order_id": "019c155d-f741-7000-b26f-856b241a57e7",
+          "user_id": "diwaz"
+        }
+      ],
+      "1449424.35": [
+        {
+          "liquidation_price": "1449424.35",
+          "order_id": "019c155d-fafb-7000-81f9-38ff01e7f8aa",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1449424.35",
+          "order_id": "019c155d-fc96-7000-9877-b7022951c51b",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1449424.35",
+          "order_id": "019c155d-fe9a-7000-a907-541b0638458a",
+          "user_id": "diwaz"
+        },
+        {
+          "liquidation_price": "1449424.35",
+          "order_id": "019c155e-00a6-7000-a9e6-18d43b204175",
+          "user_id": "diwaz"
+        }
+      ],
+      "1449855.00": [
+        {
+          "liquidation_price": "1449855.00",
+          "order_id": "019c155d-d9a1-7000-8ca8-d2f956bbf5f2",
+          "user_id": "diwaz"
+        }
+      ],
+      "1450285.65": [
+        {
+          "liquidation_price": "1450285.65",
+          "order_id": "019c155e-0455-7000-b163-0bda08a7916e",
+          "user_id": "diwaz"
+        }
+      ],
+      "1450429.20": [
+        {
+          "liquidation_price": "1450429.20",
+          "order_id": "019c155d-d6b2-7000-9605-29db33cfbd39",
+          "user_id": "diwaz"
+        }
+      ],
+      "1450572.75": [
+        {
+          "liquidation_price": "1450572.75",
+          "order_id": "019c155d-d3f1-7000-923e-2d98934ea527",
+          "user_id": "diwaz"
+        }
+      ],
+      "1452438.90": [
+        {
+          "liquidation_price": "1452438.90",
+          "order_id": "019c155d-d087-7000-b5e3-72d501f264b1",
+          "user_id": "diwaz"
+        }
+      ],
+      "1458898.65": [
+        {
+          "liquidation_price": "1458898.65",
+          "order_id": "019c155d-463d-7000-8934-6748e4e44a8c",
+          "user_id": "diwaz"
+        }
+      ],
+      "1460908.35": [
+        {
+          "liquidation_price": "1460908.35",
+          "order_id": "019c155c-844f-7000-a77e-5e12b166d2be",
+          "user_id": "diwaz"
+        }
+      ],
+      "1472823.00": [
+        {
+          "liquidation_price": "1472823.00",
+          "order_id": "019c1548-7c51-7000-88e3-c7e5c8193b66",
+          "user_id": "diwaz"
+        }
+      ],
+      "1473397.20": [
+        {
+          "liquidation_price": "1473397.20",
+          "order_id": "019c1548-8c44-7000-8993-a417b1ed7db7",
+          "user_id": "diwaz"
+        }
+      ],
+      "1473971.40": [
+        {
+          "liquidation_price": "1473971.40",
+          "order_id": "019c1548-960d-7000-a8d9-701601886886",
+          "user_id": "diwaz"
+        }
+      ],
+      "1474258.50": [
+        {
+          "liquidation_price": "1474258.50",
+          "order_id": "019c1548-916f-7000-8171-37167159a1f8",
+          "user_id": "diwaz"
+        }
+      ]
     }
   },
   "orders_by_id": {
-    "01992daa-62a0-7000-9610-74b7ff80da0c": {
-      "asset": "SOL",
-      "leverage": 5,
-      "margin": "50",
-      "open_price": "2164536",
-      "order_id": "01992daa-62a0-7000-9610-74b7ff80da0c",
-      "order_type": "sell",
-      "quantity": "0.000115498194532223072288934",
-      "timestamp": 1757407765,
-      "user_id": "test-user"
+    "019c1548-7c51-7000-88e3-c7e5c8193b66": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1015740",
+      "order_id": "019c1548-7c51-7000-88e3-c7e5c8193b66",
+      "order_type": "BUY",
+      "quantity": "0.0000196900781696103333530234",
+      "timestamp": 1769883597,
+      "user_id": "diwaz"
     },
-    "01992daa-6eae-7000-93c9-af79a4e609be": {
-      "asset": "SOL",
-      "leverage": 5,
-      "margin": "50",
-      "open_price": "2164041",
-      "order_id": "01992daa-6eae-7000-93c9-af79a4e609be",
-      "order_type": "sell",
-      "quantity": "0.0001155246134430909580733452",
-      "timestamp": 1757407768,
-      "user_id": "test-user"
+    "019c1548-8c44-7000-8993-a417b1ed7db7": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1016136",
+      "order_id": "019c1548-8c44-7000-8993-a417b1ed7db7",
+      "order_type": "BUY",
+      "quantity": "0.0000196824047174787626853098",
+      "timestamp": 1769883601,
+      "user_id": "diwaz"
     },
-    "01992daa-8ac2-7000-89e8-3f59cd0254ee": {
-      "asset": "SOL",
-      "leverage": 5,
-      "margin": "50",
-      "open_price": "2164041",
-      "order_id": "01992daa-8ac2-7000-89e8-3f59cd0254ee",
-      "order_type": "sell",
-      "quantity": "0.0001155246134430909580733452",
-      "timestamp": 1757407775,
-      "user_id": "test-user"
+    "019c1548-916f-7000-8171-37167159a1f8": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1016730",
+      "order_id": "019c1548-916f-7000-8171-37167159a1f8",
+      "order_type": "BUY",
+      "quantity": "0.0000196709057468551139437215",
+      "timestamp": 1769883603,
+      "user_id": "diwaz"
     },
-    "01992daa-9315-7000-b3ac-ca6ca69da5ec": {
-      "asset": "SOL",
-      "leverage": 5,
-      "margin": "50",
-      "open_price": "2164041",
-      "order_id": "01992daa-9315-7000-b3ac-ca6ca69da5ec",
-      "order_type": "sell",
-      "quantity": "0.0001155246134430909580733452",
-      "timestamp": 1757407777,
-      "user_id": "test-user"
+    "019c1548-960d-7000-a8d9-701601886886": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1016532",
+      "order_id": "019c1548-960d-7000-a8d9-701601886886",
+      "order_type": "BUY",
+      "quantity": "0.0000196747372438841079277386",
+      "timestamp": 1769883604,
+      "user_id": "diwaz"
     },
-    "01992dac-f240-7000-b696-b1bfe66b0b48": {
-      "asset": "SOL",
-      "leverage": 5,
-      "margin": "50",
-      "open_price": "2210183",
-      "order_id": "01992dac-f240-7000-b696-b1bfe66b0b48",
-      "order_type": "long",
-      "quantity": "0.0001131128055912112254958074",
-      "timestamp": 1757407932,
-      "user_id": "test-user"
+    "019c155c-844f-7000-a77e-5e12b166d2be": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1007523",
+      "order_id": "019c155c-844f-7000-a77e-5e12b166d2be",
+      "order_type": "BUY",
+      "quantity": "0.0000198506634587994517246753",
+      "timestamp": 1769884910,
+      "user_id": "diwaz"
+    },
+    "019c155d-463d-7000-8934-6748e4e44a8c": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1006137",
+      "order_id": "019c155d-463d-7000-8934-6748e4e44a8c",
+      "order_type": "BUY",
+      "quantity": "0.0000198780086608483735316363",
+      "timestamp": 1769884960,
+      "user_id": "diwaz"
+    },
+    "019c155d-d087-7000-b5e3-72d501f264b1": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1001682",
+      "order_id": "019c155d-d087-7000-b5e3-72d501f264b1",
+      "order_type": "BUY",
+      "quantity": "0.0000199664164874680786916407",
+      "timestamp": 1769884995,
+      "user_id": "diwaz"
+    },
+    "019c155d-d3f1-7000-923e-2d98934ea527": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1000395",
+      "order_id": "019c155d-d3f1-7000-923e-2d98934ea527",
+      "order_type": "BUY",
+      "quantity": "0.0000199921031192678891837724",
+      "timestamp": 1769884996,
+      "user_id": "diwaz"
+    },
+    "019c155d-d6b2-7000-9605-29db33cfbd39": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1000296",
+      "order_id": "019c155d-d6b2-7000-9605-29db33cfbd39",
+      "order_type": "BUY",
+      "quantity": "0.0000199940817518014667658373",
+      "timestamp": 1769884997,
+      "user_id": "diwaz"
+    },
+    "019c155d-d9a1-7000-8ca8-d2f956bbf5f2": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999900",
+      "order_id": "019c155d-d9a1-7000-8ca8-d2f956bbf5f2",
+      "order_type": "BUY",
+      "quantity": "0.0000200020002000200020002",
+      "timestamp": 1769884998,
+      "user_id": "diwaz"
+    },
+    "019c155d-dee3-7000-a01f-d9877f8da25f": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "998910",
+      "order_id": "019c155d-dee3-7000-a01f-d9877f8da25f",
+      "order_type": "BUY",
+      "quantity": "0.0000200218237879288424382577",
+      "timestamp": 1769884999,
+      "user_id": "diwaz"
+    },
+    "019c155d-e23e-7000-bdff-9e4cf769308e": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "998019",
+      "order_id": "019c155d-e23e-7000-bdff-9e4cf769308e",
+      "order_type": "BUY",
+      "quantity": "0.0000200396986430118063884555",
+      "timestamp": 1769885000,
+      "user_id": "diwaz"
+    },
+    "019c155d-e4df-7000-a9a0-37f71b0694c7": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "998019",
+      "order_id": "019c155d-e4df-7000-a9a0-37f71b0694c7",
+      "order_type": "BUY",
+      "quantity": "0.0000200396986430118063884555",
+      "timestamp": 1769885000,
+      "user_id": "diwaz"
+    },
+    "019c155d-e6de-7000-9253-f48dc908d104": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "997722",
+      "order_id": "019c155d-e6de-7000-9253-f48dc908d104",
+      "order_type": "BUY",
+      "quantity": "0.0000200456640226435820799782",
+      "timestamp": 1769885001,
+      "user_id": "diwaz"
+    },
+    "019c155d-e919-7000-86ab-b2f2207a47e0": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "997425",
+      "order_id": "019c155d-e919-7000-86ab-b2f2207a47e0",
+      "order_type": "BUY",
+      "quantity": "0.0000200516329548587613103742",
+      "timestamp": 1769885002,
+      "user_id": "diwaz"
+    },
+    "019c155d-ebb9-7000-ba9f-31b3de5d0112": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "996930",
+      "order_id": "019c155d-ebb9-7000-ba9f-31b3de5d0112",
+      "order_type": "BUY",
+      "quantity": "0.0000200615890784709056804389",
+      "timestamp": 1769885002,
+      "user_id": "diwaz"
+    },
+    "019c155d-ee37-7000-beec-c62bf6d84186": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "997524",
+      "order_id": "019c155d-ee37-7000-beec-c62bf6d84186",
+      "order_type": "BUY",
+      "quantity": "0.0000200496429158596685393033",
+      "timestamp": 1769885003,
+      "user_id": "diwaz"
+    },
+    "019c155d-f068-7000-a1a2-58009c066cac": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "998514",
+      "order_id": "019c155d-f068-7000-a1a2-58009c066cac",
+      "order_type": "BUY",
+      "quantity": "0.0000200297642296452528457288",
+      "timestamp": 1769885003,
+      "user_id": "diwaz"
+    },
+    "019c155d-f303-7000-bf7f-31bd64fa085d": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "998514",
+      "order_id": "019c155d-f303-7000-bf7f-31bd64fa085d",
+      "order_type": "BUY",
+      "quantity": "0.0000200297642296452528457288",
+      "timestamp": 1769885004,
+      "user_id": "diwaz"
+    },
+    "019c155d-f51c-7000-bb21-7308860d0949": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999009",
+      "order_id": "019c155d-f51c-7000-bb21-7308860d0949",
+      "order_type": "BUY",
+      "quantity": "0.0000200198396611041542168289",
+      "timestamp": 1769885005,
+      "user_id": "diwaz"
+    },
+    "019c155d-f741-7000-b26f-856b241a57e7": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999504",
+      "order_id": "019c155d-f741-7000-b26f-856b241a57e7",
+      "order_type": "BUY",
+      "quantity": "0.0000200099249227616897981399",
+      "timestamp": 1769885005,
+      "user_id": "diwaz"
+    },
+    "019c155d-f8b8-7000-a40c-b10675216ee6": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999207",
+      "order_id": "019c155d-f8b8-7000-a40c-b10675216ee6",
+      "order_type": "BUY",
+      "quantity": "0.0000200158725869614604381274",
+      "timestamp": 1769885006,
+      "user_id": "diwaz"
+    },
+    "019c155d-fafb-7000-81f9-38ff01e7f8aa": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999603",
+      "order_id": "019c155d-fafb-7000-81f9-38ff01e7f8aa",
+      "order_type": "BUY",
+      "quantity": "0.0000200079431534319124692503",
+      "timestamp": 1769885006,
+      "user_id": "diwaz"
+    },
+    "019c155d-fc96-7000-9877-b7022951c51b": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999603",
+      "order_id": "019c155d-fc96-7000-9877-b7022951c51b",
+      "order_type": "BUY",
+      "quantity": "0.0000200079431534319124692503",
+      "timestamp": 1769885006,
+      "user_id": "diwaz"
+    },
+    "019c155d-fe9a-7000-a907-541b0638458a": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999603",
+      "order_id": "019c155d-fe9a-7000-a907-541b0638458a",
+      "order_type": "BUY",
+      "quantity": "0.0000200079431534319124692503",
+      "timestamp": 1769885007,
+      "user_id": "diwaz"
+    },
+    "019c155e-00a6-7000-a9e6-18d43b204175": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999603",
+      "order_id": "019c155e-00a6-7000-a9e6-18d43b204175",
+      "order_type": "BUY",
+      "quantity": "0.0000200079431534319124692503",
+      "timestamp": 1769885008,
+      "user_id": "diwaz"
+    },
+    "019c155e-029a-7000-9edb-ad81ae74e354": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "999207",
+      "order_id": "019c155e-029a-7000-9edb-ad81ae74e354",
+      "order_type": "BUY",
+      "quantity": "0.0000200158725869614604381274",
+      "timestamp": 1769885008,
+      "user_id": "diwaz"
+    },
+    "019c155e-0455-7000-b163-0bda08a7916e": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "1000197",
+      "order_id": "019c155e-0455-7000-b163-0bda08a7916e",
+      "order_type": "BUY",
+      "quantity": "0.0000199960607760271226568366",
+      "timestamp": 1769885008,
+      "user_id": "diwaz"
+    },
+    "019c155e-6bce-7000-9ab5-83c82dcf3306": {
+      "asset": "SOL_USDC",
+      "leverage": 2,
+      "margin": "10",
+      "open_price": "984258",
+      "order_id": "019c155e-6bce-7000-9ab5-83c82dcf3306",
+      "order_type": "BUY",
+      "quantity": "0.0000203198754798030597668497",
+      "timestamp": 1769885035,
+      "user_id": "diwaz"
     }
   },
   "orders_by_user": {
+    "diwaz": [
+      "019c1548-7c51-7000-88e3-c7e5c8193b66",
+      "019c1548-8c44-7000-8993-a417b1ed7db7",
+      "019c1548-916f-7000-8171-37167159a1f8",
+      "019c1548-960d-7000-a8d9-701601886886",
+      "019c155c-844f-7000-a77e-5e12b166d2be",
+      "019c155d-463d-7000-8934-6748e4e44a8c",
+      "019c155d-d087-7000-b5e3-72d501f264b1",
+      "019c155d-d3f1-7000-923e-2d98934ea527",
+      "019c155d-d6b2-7000-9605-29db33cfbd39",
+      "019c155d-d9a1-7000-8ca8-d2f956bbf5f2",
+      "019c155d-dee3-7000-a01f-d9877f8da25f",
+      "019c155d-e23e-7000-bdff-9e4cf769308e",
+      "019c155d-e4df-7000-a9a0-37f71b0694c7",
+      "019c155d-e6de-7000-9253-f48dc908d104",
+      "019c155d-e919-7000-86ab-b2f2207a47e0",
+      "019c155d-ebb9-7000-ba9f-31b3de5d0112",
+      "019c155d-ee37-7000-beec-c62bf6d84186",
+      "019c155d-f068-7000-a1a2-58009c066cac",
+      "019c155d-f303-7000-bf7f-31bd64fa085d",
+      "019c155d-f51c-7000-bb21-7308860d0949",
+      "019c155d-f741-7000-b26f-856b241a57e7",
+      "019c155d-f8b8-7000-a40c-b10675216ee6",
+      "019c155d-fafb-7000-81f9-38ff01e7f8aa",
+      "019c155d-fc96-7000-9877-b7022951c51b",
+      "019c155d-fe9a-7000-a907-541b0638458a",
+      "019c155e-00a6-7000-a9e6-18d43b204175",
+      "019c155e-029a-7000-9edb-ad81ae74e354",
+      "019c155e-0455-7000-b163-0bda08a7916e",
+      "019c155e-6bce-7000-9ab5-83c82dcf3306"
+    ],
     "test-user": [
       "01992daa-62a0-7000-9610-74b7ff80da0c",
       "01992daa-6eae-7000-93c9-af79a4e609be",
@@ -108,6 +596,12 @@
       "sell_price": "1118589120",
       "symbol": "BTC"
     },
+    "BTC_USDC": {
+      "buy_price": "776687980",
+      "decimals": 4,
+      "sell_price": "760789260",
+      "symbol": "BTC_USDC"
+    },
     "ETH": {
       "buy_price": "44025092",
       "decimals": 4,
@@ -119,10 +613,20 @@
       "decimals": 4,
       "sell_price": "2167605",
       "symbol": "SOL"
+    },
+    "SOL_USDC": {
+      "buy_price": "991618",
+      "decimals": 4,
+      "sell_price": "967923",
+      "symbol": "SOL_USDC"
     }
   },
-  "timestamp": 1757408243,
+  "timestamp": 1769885086,
   "users": {
+    "diwaz": {
+      "asset_balances": {},
+      "usd_balance": "4710"
+    },
     "test-user": {
       "asset_balances": {},
       "usd_balance": "909.5984385174925142468717734"

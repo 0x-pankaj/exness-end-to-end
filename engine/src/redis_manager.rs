@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use redis::{
     AsyncCommands, Client,
     aio::MultiplexedConnection,
@@ -29,6 +29,11 @@ impl RedisManager {
 
     pub async fn add_to_stream(&mut self, stream: &str, data: &str) -> Result<()> {
         let _: String = self.connection.xadd(stream, "*", &[("data", data)]).await?;
+        Ok(())
+    }
+
+    pub async fn publisher(&mut self, channel: &str, message: &str) -> Result<()> {
+        let _: i64 = self.connection.publish(channel, message).await?;
         Ok(())
     }
 }

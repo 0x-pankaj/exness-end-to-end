@@ -219,6 +219,7 @@ impl Processor {
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager.read_stream("orders", &last_id).await
             };
+            // println!("results: {:?} ", result);
 
             match result {
                 Ok(reply) => {
@@ -247,6 +248,7 @@ impl Processor {
     }
 
     async fn process_message(&self, data: HashMap<String, RedisValue>) -> Result<()> {
+        // println!("data on process message: {:?}", data);
         let data_str = data
             .get("data")
             .and_then(|v| match v {
@@ -307,6 +309,7 @@ impl Processor {
     }
 
     async fn handle_create_order(&self, data: &Value) -> Result<()> {
+        println!("create)order {:?}", data);
         let order_id = self.get_string_field(data, "orderId")?;
         let user_id = self.get_string_field(data, "user")?;
         let asset = self.get_string_field(data, "asset")?;
@@ -328,7 +331,7 @@ impl Processor {
 
             let mut redis_manager = self.redis_manager.write().await;
             redis_manager
-                .add_to_stream("callback_response", &response.to_string())
+                .publisher(&order_id, &response.to_string())
                 .await?;
             return Ok(());
         }
@@ -362,7 +365,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await?;
             }
             Err(e) => {
@@ -376,7 +379,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await?;
             }
         }
@@ -414,7 +417,7 @@ impl Processor {
                 println!("Got redis manager lock, adding to callback_response stream...");
 
                 let stream_result = redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await;
 
                 println!("Stream add result: {:?}", stream_result);
@@ -457,7 +460,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 let stream_result = redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await;
 
                 println!("Error response stream result: {:?}", stream_result);
@@ -475,6 +478,7 @@ impl Processor {
 
     async fn handle_get_balance_usd(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
+        let order_id = self.get_string_field(data, "orderId")?;
 
         // Ensure user exists
         {
@@ -498,7 +502,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await?;
             }
             Err(e) => {
@@ -511,7 +515,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await?;
             }
         }
@@ -521,6 +525,7 @@ impl Processor {
 
     async fn handle_get_balance(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
+        let order_id = self.get_string_field(data, "orderId")?;
 
         // Ensure user exists
         {
@@ -548,7 +553,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response_data.to_string())
+                    .publisher(&order_id, &response_data.to_string())
                     .await?;
             }
             Err(e) => {
@@ -561,7 +566,7 @@ impl Processor {
 
                 let mut redis_manager = self.redis_manager.write().await;
                 redis_manager
-                    .add_to_stream("callback_response", &response.to_string())
+                    .publisher(&order_id, &response.to_string())
                     .await?;
             }
         }
@@ -570,6 +575,7 @@ impl Processor {
     }
 
     async fn handle_get_supported_assets(&self, data: &Value) -> Result<()> {
+        let order_id = self.get_string_field(data, "orderId")?;
         let supported_assets = json!([
             {
                 "symbol": "BTC",
@@ -595,7 +601,7 @@ impl Processor {
 
         let mut redis_manager = self.redis_manager.write().await;
         redis_manager
-            .add_to_stream("callback_response", &response.to_string())
+            .publisher(&order_id, &response.to_string())
             .await?;
 
         Ok(())
@@ -603,6 +609,7 @@ impl Processor {
 
     async fn handle_get_orders(&self, data: &Value) -> Result<()> {
         let user_id = self.get_string_field(data, "user")?;
+        let order_id = self.get_string_field(data, "orderId")?;
 
         // Ensure user exists
         {
@@ -622,7 +629,7 @@ impl Processor {
 
         let mut redis_manager = self.redis_manager.write().await;
         redis_manager
-            .add_to_stream("callback_response", &response.to_string())
+            .publisher(&order_id, &response.to_string())
             .await?;
 
         Ok(())
@@ -636,16 +643,40 @@ impl Processor {
     }
 
     fn get_decimal_field(&self, data: &Value, field: &str) -> Result<Decimal> {
-        let str_val = self.get_string_field(data, field)?;
-        Decimal::from_str(&str_val)
-            .map_err(|e| anyhow::anyhow!("Invalid decimal for field {}: {}", field, e))
+        let val = data
+            .get(field)
+            .ok_or_else(|| anyhow::anyhow!("Missing or invalid field: {}", field))?;
+
+        if let Some(s) = val.as_str() {
+            Decimal::from_str(s)
+                .map_err(|e| anyhow::anyhow!("Invalid decimal string for field {}: {}", field, e))
+        } else if val.is_number() {
+            Decimal::from_str(&val.to_string())
+                .map_err(|e| anyhow::anyhow!("Invalid decimal number for field {}: {}", field, e))
+        } else {
+            Err(anyhow::anyhow!(
+                "Invalid type for field {}: expected string or number",
+                field
+            ))
+        }
     }
 
     fn get_u32_field(&self, data: &Value, field: &str) -> Result<u32> {
-        let str_val = self.get_string_field(data, field)?;
-        str_val
-            .parse::<u32>()
-            .map_err(|e| anyhow::anyhow!("Invalid u32 for field {}: {}", field, e))
+        let val = data
+            .get(field)
+            .ok_or_else(|| anyhow::anyhow!("Missing or invalid field: {}", field))?;
+
+        if let Some(s) = val.as_str() {
+            s.parse::<u32>()
+                .map_err(|e| anyhow::anyhow!("Invalid u32 string for field {}: {}", field, e))
+        } else if let Some(n) = val.as_u64() {
+            Ok(n as u32)
+        } else {
+            Err(anyhow::anyhow!(
+                "Invalid type for field {}: expected string or number",
+                field
+            ))
+        }
     }
 
     fn get_i64_field(&self, data: &Value, field: &str) -> Result<i64> {

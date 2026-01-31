@@ -24,9 +24,19 @@ wss.on("connection", (ws) => {
 await subscriber.subscribe("price_updates", (message) => {
   const trade = JSON.parse(message);
 
-  clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(trade));
-    }
-  });
+  console.log("trade price: ", trade);
+
+  //   trade price:  {
+  //   symbol: "SOL_USDC",
+  //   buyPrice: "1164631",
+  //   sellPrice: "1141470",
+  //   decimal: 4,
+  // }
+
+
+  // clients.forEach((client) => {
+  //   if (client.readyState === WebSocket.OPEN) {
+  //     client.send(JSON.stringify(trade));
+  //   }
+  // });
 });
